@@ -145,7 +145,6 @@ public class NamingStandaloneTestCase {
 
     @Test
     @InSequence(1)
-    @Ignore("[JBOSGI-666] Cannot lookup owner context using standard naming API")
     public void testTraditionalAPIOwnerContext(@ArquillianResource Bundle bundle) throws Exception {
 
         // Get the InitialContext via API

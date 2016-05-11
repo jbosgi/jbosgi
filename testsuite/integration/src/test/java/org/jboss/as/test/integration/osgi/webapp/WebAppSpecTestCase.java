@@ -143,7 +143,6 @@ public class WebAppSpecTestCase {
     }
 
     @Test
-    @Ignore("[JBOSGI-751] Fragment deployment fails in 8.0.0.Beta1")
     public void testWebXMLInFragment() throws Exception {
         // The findEntries method includes fragments, allowing the web.xml to be provided by a fragment.
         deployer.deploy(FRAGMENT_C);

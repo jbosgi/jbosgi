@@ -146,7 +146,6 @@ public class ServerDeploymentTestCase {
     }
 
     @Test
-    @Ignore("[JBOSGI-751] Fragment deployment fails in 8.0.0.Beta1")
     public void testAttachedFragment() throws Exception {
         ModelControllerClient client = FrameworkUtils.waitForService(context, ModelControllerClient.class);
         ServerDeploymentHelper server = new ServerDeploymentHelper(client);
@@ -180,7 +179,6 @@ public class ServerDeploymentTestCase {
     }
 
     @Test
-    @Ignore("[JBOSGI-751] Fragment deployment fails in 8.0.0.Beta1")
     public void testUnattachedFragment() throws Exception {
         ModelControllerClient client = FrameworkUtils.waitForService(context, ModelControllerClient.class);
         ServerDeploymentHelper server = new ServerDeploymentHelper(client);
@@ -216,7 +214,6 @@ public class ServerDeploymentTestCase {
     }
 
     @Test
-    @Ignore("[JBOSGI-751] Fragment deployment fails in 8.0.0.Beta1")
     public void testAttachedFragmentEar() throws Exception {
         ModelControllerClient client = FrameworkUtils.waitForService(context, ModelControllerClient.class);
         ServerDeploymentHelper server = new ServerDeploymentHelper(client);

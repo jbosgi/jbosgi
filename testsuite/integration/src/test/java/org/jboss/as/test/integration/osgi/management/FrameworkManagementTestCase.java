@@ -133,7 +133,6 @@ public class FrameworkManagementTestCase {
     }
 
     @Test
-    @Ignore("[JBOSGI-751] Fragment deployment fails in 8.0.0.Beta1")
     public void testBundleRuntimeOperations(@ArquillianResource Deployer deployer) throws Exception {
         // No need to ensure the framework is active. If it isn't deploying a bundle
         // should trigger it into active mode.

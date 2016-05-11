@@ -67,7 +67,7 @@ public class BundleDeploymentProcessor implements DeploymentUnitProcessor {
 
     public static final AttachmentKey<DeploymentUnit> DEPLOYMENT_UNIT_KEY = AttachmentKey.create(DeploymentUnit.class);
     public static final AttachmentKey<ModuleSpecification> MODULE_SPECIFICATION_KEY = AttachmentKey.create(ModuleSpecification.class);
-    
+
     public final String [] EXCLUDED_SUBSYSTEMS = {"batch"};
 
     @Override
@@ -84,37 +84,41 @@ public class BundleDeploymentProcessor implements DeploymentUnitProcessor {
 
         // Check for attached BundleInfo
         BundleInfo info = depUnit.getAttachment(OSGiConstants.BUNDLE_INFO_KEY);
-        if (deployment == null && info != null) {
-            deployment = DeploymentFactory.createDeployment(info);
-            deployment.putAttachment(BUNDLE_INFO_KEY, info);
-            OSGiMetaData metadata = info.getOSGiMetadata();
-            deployment.setAutoStart(!metadata.isFragment());
+        OSGiMetaData metadata = null;
+        if (info != null) {
+            metadata = info.getOSGiMetadata();
 
-            // Set the start level and prevent autostart if greater than the Framwork startlevel
-            AnnotationInstance slAware = getAnnotation(depUnit, "org.jboss.arquillian.osgi.StartLevelAware");
-            if (slAware != null) {
-                MethodInfo slTarget = (MethodInfo) slAware.target();
-                for (AnnotationInstance anDeployment : getAnnotations(depUnit, "org.jboss.arquillian.container.test.api.Deployment")) {
-                    AnnotationValue namevalue = anDeployment.value("name");
-                    Object deploymentName = namevalue != null ? namevalue.value() : null;
-                    if (slTarget == anDeployment.target() && depUnit.getName().equals(deploymentName)) {
-                        int startLevel = slAware.value("startLevel").asInt();
-                        deployment.setStartLevel(startLevel);
-                        deployment.setAutoStart(false);
+            if (deployment == null) {
+                deployment = DeploymentFactory.createDeployment(info);
+                deployment.putAttachment(BUNDLE_INFO_KEY, info);
+                deployment.setAutoStart(!metadata.isFragment());
+
+                // Set the start level and prevent autostart if greater than the Framwork startlevel
+                AnnotationInstance slAware = getAnnotation(depUnit, "org.jboss.arquillian.osgi.StartLevelAware");
+                if (slAware != null) {
+                    MethodInfo slTarget = (MethodInfo) slAware.target();
+                    for (AnnotationInstance anDeployment : getAnnotations(depUnit, "org.jboss.arquillian.container.test.api.Deployment")) {
+                        AnnotationValue namevalue = anDeployment.value("name");
+                        Object deploymentName = namevalue != null ? namevalue.value() : null;
+                        if (slTarget == anDeployment.target() && depUnit.getName().equals(deploymentName)) {
+                            int startLevel = slAware.value("startLevel").asInt();
+                            deployment.setStartLevel(startLevel);
+                            deployment.setAutoStart(false);
+                        }
                     }
                 }
-            }
 
-            // Prevent autostart for marked deployments
-            AnnotationInstance marker = getAnnotation(depUnit, "org.jboss.as.arquillian.jbosgi.api.DeploymentMarker");
-            if (marker != null) {
-                AnnotationValue value = marker.value("autoStart");
-                if (value != null && deployment.isAutoStart()) {
-                    deployment.setAutoStart(value.asBoolean());
-                }
-                value = marker.value("startLevel");
-                if (value != null && deployment.getStartLevel() == null) {
-                    deployment.setStartLevel(value.asInt());
+                // Prevent autostart for marked deployments
+                AnnotationInstance marker = getAnnotation(depUnit, "org.jboss.as.arquillian.jbosgi.api.DeploymentMarker");
+                if (marker != null) {
+                    AnnotationValue value = marker.value("autoStart");
+                    if (value != null && deployment.isAutoStart()) {
+                        deployment.setAutoStart(value.asBoolean());
+                    }
+                    value = marker.value("startLevel");
+                    if (value != null && deployment.getStartLevel() == null) {
+                        deployment.setStartLevel(value.asInt());
+                    }
                 }
             }
         }
@@ -140,20 +144,28 @@ public class BundleDeploymentProcessor implements DeploymentUnitProcessor {
             depUnit.putAttachment(OSGiConstants.DEPLOYMENT_KEY, deployment);
             deployment.putAttachment(BundleDeploymentProcessor.DEPLOYMENT_UNIT_KEY, depUnit);
             final DeploymentUnit parent;
-            if(depUnit.getParent() == null) {
+            if (depUnit.getParent() == null) {
                 parent = depUnit;
             } else {
                 parent = depUnit.getParent();
             }
-            
+
             boolean noExistingSubsystems = false;
             Set<String> excludedSubsystems = depUnit.getAttachment(Attachments.EXCLUDED_SUBSYSTEMS);
-            if(excludedSubsystems == null) {
+            if (excludedSubsystems == null) {
                 excludedSubsystems = new HashSet<String>();
                 noExistingSubsystems = true;
             }
             excludedSubsystems.addAll(Arrays.asList(EXCLUDED_SUBSYSTEMS));
-            if(noExistingSubsystems) {
+
+            if (metadata != null && metadata.isFragment()) {
+                // JBOSGI-751, JBOSGI-761, JBOSGI-793
+                excludedSubsystems.add("webservices");
+                excludedSubsystems.add("ee");
+                excludedSubsystems.add("ejb3");
+            }
+
+            if (noExistingSubsystems) {
                 depUnit.putAttachment(Attachments.EXCLUDED_SUBSYSTEMS, excludedSubsystems);
             }
 

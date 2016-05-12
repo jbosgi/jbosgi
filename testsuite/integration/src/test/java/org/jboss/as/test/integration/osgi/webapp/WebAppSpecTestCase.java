@@ -153,6 +153,11 @@ public class WebAppSpecTestCase {
             Bundle bundle = FrameworkUtils.getBundles(context, BUNDLE_C_WAB, null)[0];
             Enumeration<URL> entries = bundle.findEntries("WEB-INF", "web.xml", true);
             Assert.assertNotNull("WEb-INF/web.xml entries found", entries);
+            // JBOSGI-794
+            result = performCall("/bundleC/host-message.txt");
+            Assert.assertEquals("Hello from Host", result);
+            result = performCall("/bundleC/fragment-message.txt");
+            Assert.assertEquals("Hello from Fragment", result);
         } finally {
             deployer.undeploy(BUNDLE_C_WAB);
             deployer.undeploy(FRAGMENT_C);

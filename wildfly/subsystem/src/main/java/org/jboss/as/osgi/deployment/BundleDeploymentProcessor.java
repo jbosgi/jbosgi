@@ -84,9 +84,8 @@ public class BundleDeploymentProcessor implements DeploymentUnitProcessor {
 
         // Check for attached BundleInfo
         BundleInfo info = depUnit.getAttachment(OSGiConstants.BUNDLE_INFO_KEY);
-        OSGiMetaData metadata = null;
         if (info != null) {
-            metadata = info.getOSGiMetadata();
+            OSGiMetaData metadata = info.getOSGiMetadata();
 
             if (deployment == null) {
                 deployment = DeploymentFactory.createDeployment(info);
@@ -158,8 +157,9 @@ public class BundleDeploymentProcessor implements DeploymentUnitProcessor {
             }
             excludedSubsystems.addAll(Arrays.asList(EXCLUDED_SUBSYSTEMS));
 
+            OSGiMetaData metadata = depUnit.getAttachment(OSGiConstants.OSGI_METADATA_KEY);
             if (metadata != null && metadata.isFragment()) {
-                // JBOSGI-751, JBOSGI-761, JBOSGI-793
+                // JBOSGI-751, JBOSGI-761, JBOSGI-793, JBOSGI-794
                 excludedSubsystems.add("webservices");
                 excludedSubsystems.add("ee");
                 excludedSubsystems.add("ejb3");

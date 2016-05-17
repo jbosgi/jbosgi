@@ -73,8 +73,11 @@ public class WebAppTestCase {
     static final String BUNDLE_D_WAB = "bundle-d.wab";
     static final String BUNDLE_E_JAR = "bundle-e.jar";
     static final String BUNDLE_F_WAB = "bundle-f.wab";
+    static final String BUNDLE_G_HOST_JAR = "bundle-g.jar";
+    static final String BUNDLE_H_FRAG_JAR = "bundle-h.jar";
 
     static final Asset STRING_ASSET = new StringAsset("Hello from Resource");
+    static final Asset STRING_FRAG_ASSET = new StringAsset("Hello from Fragment Resource");
 
     @ArquillianResource
     Deployer deployer;
@@ -194,6 +197,82 @@ public class WebAppTestCase {
             Assert.assertEquals("Hello from Resource", result);
         } finally {
             deployer.undeploy(BUNDLE_E_JAR);
+        }
+    }
+
+    @Test
+    // JBOSGI-794
+    public void testFragmentAndHostBundleWithJarExtension() throws Exception {
+        // Fragment is started then host is started
+        deployer.deploy(BUNDLE_H_FRAG_JAR);
+        try {
+            deployer.deploy(BUNDLE_G_HOST_JAR);
+            try {
+                String result = performCall("/bundle-g/servlet?input=Hello");
+                Assert.assertEquals("Simple Servlet called with input=Hello", result);
+                result = performCall("/bundle-g/message.txt");
+                Assert.assertEquals("Hello from Resource", result);
+                result = performCall("/bundle-g/message-frag.txt");
+                Assert.assertEquals("Hello from Fragment Resource", result);
+            } finally {
+                deployer.undeploy(BUNDLE_G_HOST_JAR);
+            }
+        } finally {
+            deployer.undeploy(BUNDLE_H_FRAG_JAR);
+        }
+    }
+
+    @Test
+    // JBOSGI-794
+    public void testHostBundleAndFragmentWithJarExtension() throws Exception {
+        // Bundle is installed but not started, then fragment is started
+        InputStream input = deployer.getDeployment(BUNDLE_G_HOST_JAR);
+        Bundle bundle = context.installBundle(BUNDLE_G_HOST_JAR, input);
+        try {
+            Assert.assertEquals("INSTALLED", Bundle.INSTALLED, bundle.getState());
+            deployer.deploy(BUNDLE_H_FRAG_JAR);
+            bundle.start();
+            Assert.assertEquals("ACTIVE", Bundle.ACTIVE, bundle.getState());
+            try {
+                String result = performCall("/bundle-g/servlet?input=Hello");
+                Assert.assertEquals("Simple Servlet called with input=Hello", result);
+                result = performCall("/bundle-g/message.txt");
+                Assert.assertEquals("Hello from Resource", result);
+                result = performCall("/bundle-g/message-frag.txt");
+                Assert.assertEquals("Hello from Fragment Resource", result);
+            } finally {
+                deployer.undeploy(BUNDLE_H_FRAG_JAR);
+            }
+        } finally {
+            deployer.undeploy(BUNDLE_G_HOST_JAR);
+        }
+    }
+
+    @Test
+    // JBOSGI-794
+    public void testHostBundleAndFragmentWithJarExtensionSimulateConcurrentStartup() throws Exception {
+        // Bundle is installed, fragment is installed, then host is started
+        InputStream input = deployer.getDeployment(BUNDLE_G_HOST_JAR);
+        Bundle hostBundle = context.installBundle(BUNDLE_G_HOST_JAR, input);
+        try {
+            Assert.assertEquals("INSTALLED", Bundle.INSTALLED, hostBundle.getState());
+            input = deployer.getDeployment(BUNDLE_H_FRAG_JAR);
+            Bundle fragBundle = context.installBundle(BUNDLE_H_FRAG_JAR, input);
+            try {
+                Assert.assertEquals("INSTALLED", Bundle.INSTALLED, fragBundle.getState());
+                hostBundle.start();
+                Assert.assertEquals("ACTIVE", Bundle.ACTIVE, hostBundle.getState());
+                String result = performCall("/bundle-g/servlet?input=Hello");
+                Assert.assertEquals("Simple Servlet called with input=Hello", result);
+                result = performCall("/bundle-g/message.txt");
+                Assert.assertEquals("Hello from Resource", result);
+                result = performCall("/bundle-g/message-frag.txt");
+                Assert.assertEquals("Hello from Fragment Resource", result);
+            } finally {
+                deployer.undeploy(BUNDLE_H_FRAG_JAR);
+            }
+        } finally {
+            deployer.undeploy(BUNDLE_G_HOST_JAR);
         }
     }
 
@@ -388,6 +467,45 @@ public class WebAppTestCase {
                 builder.addImportPackages(PostConstruct.class, WebServlet.class);
                 builder.addImportPackages(Servlet.class, HttpServlet.class);
                 builder.addImportPackages(BundleActivator.class);
+                return builder.openStream();
+            }
+        });
+        return archive;
+    }
+
+    @Deployment(name = BUNDLE_G_HOST_JAR, managed = false, testable = false)
+    public static Archive<?> getBundleG() {
+        final JavaArchive archive = ShrinkWrap.create(JavaArchive.class, BUNDLE_G_HOST_JAR);
+        archive.addClasses(SimpleServlet.class, Echo.class);
+        archive.addAsResource(STRING_ASSET, "message.txt");
+        archive.setManifest(new Asset() {
+            @Override
+            public InputStream openStream() {
+                OSGiManifestBuilder builder = OSGiManifestBuilder.newInstance();
+                builder.addBundleSymbolicName(archive.getName());
+                builder.addBundleManifestVersion(2);
+                builder.addImportPackages(PostConstruct.class, WebServlet.class);
+                builder.addImportPackages(Servlet.class, HttpServlet.class);
+                builder.addManifestHeader("Web-ContextPath", "/bundle-g");
+                builder.addRequiredCapabilities("fragment-h");
+                return builder.openStream();
+            }
+        });
+        return archive;
+    }
+
+    @Deployment(name = BUNDLE_H_FRAG_JAR, managed = false, testable = false)
+    public static Archive<?> getBundleH() {
+        final JavaArchive archive = ShrinkWrap.create(JavaArchive.class, BUNDLE_H_FRAG_JAR);
+        archive.addAsResource(STRING_FRAG_ASSET, "message-frag.txt");
+        archive.setManifest(new Asset() {
+            @Override
+            public InputStream openStream() {
+                OSGiManifestBuilder builder = OSGiManifestBuilder.newInstance();
+                builder.addBundleSymbolicName(archive.getName());
+                builder.addBundleManifestVersion(2);
+                builder.addFragmentHost(BUNDLE_G_HOST_JAR);
+                builder.addProvidedCapabilities("fragment-h");
                 return builder.openStream();
             }
         });

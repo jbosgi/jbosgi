@@ -21,7 +21,7 @@
     <parent>
         <groupId>org.jboss.osgi.testsuite</groupId>
         <artifactId>jbosgi-testsuite</artifactId>
-        <version>2.4.2.Final-SNAPSHOT</version>
+        <version>2.4.2.Final</version>
     </parent>
 
     <name>JBossOSGi Testsuite Functional</name>

@@ -23,14 +23,14 @@
     <artifactId>jbosgi</artifactId>
     <packaging>pom</packaging>
 
-    <version>2.4.2.Final-SNAPSHOT</version>
+    <version>2.4.2.Final</version>
 
     <!-- Source Control -->
     <scm>
         <connection>scm:git:git://github.com/jbosgi/jbosgi.git</connection>
         <developerConnection>scm:git:git@github.com:jbosgi/jbosgi.git</developerConnection>
         <url>http://github.com/jbosgi/jbosgi</url>
-        <tag>HEAD</tag>
+        <tag>2.4.2.Final</tag>
     </scm>
 
     <!-- Properties -->

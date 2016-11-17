@@ -10,7 +10,7 @@
             <property name="allowConnectingToRunningServer">true</property>
             <property name="serverConfig">standalone-osgi.xml</property>
             <property name="javaVmArguments">${jacocoArgLine}</property>
-            <!-- <property name="javaVmArguments">-agentlib:jdwp=transport=dt_socket,address=5000,server=y,suspend=y</property> -->
+            <property name="javaVmArguments">-agentlib:jdwp=transport=dt_socket,address=5000,server=y,suspend=y</property> -->
         </configuration>
     </container>
 </arquillian>

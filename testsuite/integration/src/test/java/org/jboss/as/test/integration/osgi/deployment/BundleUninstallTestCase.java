@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.maven.model.Organization;
 import org.jboss.arquillian.container.test.api.Deployer;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
@@ -31,7 +32,14 @@ import org.jboss.as.controller.client.helpers.ClientConstants;
 import org.jboss.as.controller.client.helpers.standalone.DeploymentPlanBuilder;
 import org.jboss.as.controller.client.helpers.standalone.ServerDeploymentHelper;
 import org.jboss.as.test.integration.common.HttpRequest;
+import org.jboss.as.test.integration.osgi.deployment.base.BaseBundleActivator;
+import org.jboss.as.test.integration.osgi.deployment.base.model.Employee;
+import org.jboss.as.test.integration.osgi.deployment.base.service.EmployeeService;
+import org.jboss.as.test.integration.osgi.deployment.base.service.EmployeeServiceImpl;
 import org.jboss.as.test.integration.osgi.deployment.bundle.ServletV200;
+import org.jboss.as.test.integration.osgi.deployment.dependent.DependentBundleActivator;
+import org.jboss.as.test.integration.osgi.deployment.dependent.service.WrapperService;
+import org.jboss.as.test.integration.osgi.deployment.dependent.service.WrapperServiceImpl;
 import org.jboss.as.test.integration.osgi.deployment.suba.ResourceRevisionAccess;
 import org.jboss.modules.ModuleClassLoader;
 import org.jboss.osgi.metadata.OSGiManifestBuilder;
@@ -48,6 +56,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleReference;
 import org.osgi.framework.wiring.BundleRevision;
@@ -65,6 +74,8 @@ public class BundleUninstallTestCase {
 
     static final String BUNDLE_V200_WAB = "bundle-v200.wab";
     static final String V200_JAR = "v200.jar";
+    static final String BASE_JAR = "base.jar";
+    static final String DEPENDENT_JAR = "dependent.jar";
 
     @ArquillianResource
     Deployer deployer;
@@ -210,7 +221,7 @@ public class BundleUninstallTestCase {
 
     @Test
     @InSequence(60)
-    public void testDependentJarUndeploy() throws Exception {
+    public void testWebAppDependentJarUndeploy() throws Exception {
         ServerDeploymentHelper server = new ServerDeploymentHelper(managementClient.getControllerClient());
         String jarName = server.deploy(V200_JAR, deployer.getDeployment(V200_JAR));
         String webappName = server.deploy(BUNDLE_V200_WAB, deployer.getDeployment(BUNDLE_V200_WAB));
@@ -247,6 +258,23 @@ public class BundleUninstallTestCase {
         Assert.assertNull("BundleWiring null", brev.getWiring());
     }
 
+    @Test
+    public void testJarDependentJarUndeploy() throws Exception {
+        ServerDeploymentHelper server = new ServerDeploymentHelper(managementClient.getControllerClient());
+        String baseName = server.deploy(BASE_JAR, deployer.getDeployment(BASE_JAR));
+        
+        String dependentName = server.deploy(DEPENDENT_JAR, deployer.getDeployment(DEPENDENT_JAR));
+        // try {
+            server.undeploy(baseName);
+            
+            String newBaseName = server.deploy(BASE_JAR, deployer.getDeployment(BASE_JAR));
+            server.undeploy(newBaseName);
+
+        // } finally {
+            server.undeploy(dependentName);
+        // }
+    }
+    
     private String performCall(String context, String pattern, String param) throws Exception {
         String urlspec = managementClient.getWebUri() + "/" + context + "/";
         URL url = new URL(urlspec + pattern + (param != null ? "?input=" + param : ""));
@@ -286,6 +314,56 @@ public class BundleUninstallTestCase {
                 builder.addBundleManifestVersion(2);
                 builder.addImportPackages(ModuleClassLoader.class);
                 builder.addExportPackages(ResourceRevisionAccess.class);
+                return builder.openStream();
+            }
+        });
+        return archive;
+    }
+    
+    @Deployment(name = BASE_JAR, managed = false, testable = false)
+    public static JavaArchive getBaseJar() {
+        final JavaArchive archive = ShrinkWrap.create(JavaArchive.class, BASE_JAR);
+        archive.addClasses(BaseBundleActivator.class);
+        archive.addClasses(Employee.class);
+        archive.addClasses(EmployeeService.class);
+        archive.addClasses(EmployeeServiceImpl.class);
+        archive.setManifest(new Asset() {
+            @Override
+            public InputStream openStream() {
+                OSGiManifestBuilder builder = OSGiManifestBuilder.newInstance();
+                builder.addBundleSymbolicName(BASE_JAR);
+                builder.addBundleVersion("1.0.0");
+                builder.addBundleManifestVersion(2);
+                builder.addImportPackages(BundleActivator.class);
+                builder.addBundleActivator(BaseBundleActivator.class);
+                builder.addExportPackages(Employee.class);
+                builder.addExportPackages(EmployeeService.class);
+                return builder.openStream();
+            }
+        });
+        return archive;
+    }
+    
+    @Deployment(name = DEPENDENT_JAR, managed = false, testable = false)
+    public static JavaArchive getDependentJar() {
+        final JavaArchive archive = ShrinkWrap.create(JavaArchive.class, DEPENDENT_JAR);
+        archive.addClasses(DependentBundleActivator.class);
+        archive.addClasses(Organization.class);
+        archive.addClasses(WrapperService.class);
+        archive.addClasses(WrapperServiceImpl.class);
+        archive.setManifest(new Asset() {
+            @Override
+            public InputStream openStream() {
+                OSGiManifestBuilder builder = OSGiManifestBuilder.newInstance();
+                builder.addBundleSymbolicName(DEPENDENT_JAR);
+                builder.addBundleVersion("1.0.0");
+                builder.addBundleManifestVersion(2);
+                builder.addBundleActivator(DependentBundleActivator.class);
+                builder.addImportPackages(BundleActivator.class);
+                builder.addImportPackages(Employee.class);
+                builder.addImportPackages(EmployeeService.class);
+                builder.addExportPackages(Organization.class);
+                builder.addExportPackages(WrapperService.class);
                 return builder.openStream();
             }
         });

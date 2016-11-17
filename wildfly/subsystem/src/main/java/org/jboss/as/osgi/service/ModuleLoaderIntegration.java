@@ -202,12 +202,13 @@ final class ModuleLoaderIntegration extends FrameworkModuleLoaderPlugin {
         @Override
         public void addModuleSpec(XBundleRevision brev, final ModuleSpec moduleSpec) {
             ModuleIdentifier identifier = moduleSpec.getModuleIdentifier();
-            LOGGER.tracef("Add module spec to loader: %s", identifier);
             ServiceName moduleSpecName = ServiceModuleLoader.moduleSpecServiceName(identifier);
-            ImmediateValue<ModuleDefinition> value = new ImmediateValue<>(new ModuleDefinition(identifier, Collections.<ModuleDependency>emptySet(), moduleSpec));
-            serviceTarget.addService(moduleSpecName, new ValueService<>(value)).install();
-
-            ServiceModuleLoader.installModuleResolvedService(serviceTarget, identifier);
+            if(serviceContainer.getService(moduleSpecName) == null) {
+                LOGGER.tracef("Add module spec to loader: %s", identifier);
+                ImmediateValue<ModuleDefinition> value = new ImmediateValue<>(new ModuleDefinition(identifier, Collections.<ModuleDependency>emptySet(), moduleSpec));
+                serviceTarget.addService(moduleSpecName, new ValueService<>(value)).install();
+                ServiceModuleLoader.installModuleResolvedService(serviceTarget, identifier);
+            }
         }
 
         /**
